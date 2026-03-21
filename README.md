@@ -1,44 +1,53 @@
-# 📄 DocSense
+# 📄 DocSense V2
 
-Upload any PDF and ask questions — AI answers directly from your document.
-Built with FastAPI + ChromaDB + Ollama + Next.js.
+AI-powered document Q&A — upload any PDF and chat with it.
+Built with FastAPI + ChromaDB + Sentence Transformers + Ollama + Next.js.
+
+## What's New in V2
+- 🔐 JWT Authentication — register/login, each user sees only their documents
+- 🧩 Semantic Chunking — splits by sentences using NLTK, not arbitrary characters
+- ⚡ Streaming Responses — answers appear word by word like ChatGPT
+- 📊 Upload Progress — step by step visual feedback during processing
+- 🗂️ Document Manager — sidebar with all your docs, delete anytime
+- 🏗️ Production Structure — routers, models, utils separated properly
 
 ## Tech Stack
-- **Backend:** Python, FastAPI
-- **Vector DB:** ChromaDB (local embeddings storage)
-- **Embeddings:** Sentence Transformers (all-MiniLM-L6-v2)
-- **AI:** Ollama (TinyLlama — runs fully locally, no API key needed)
+- **Backend:** Python, FastAPI, SQLAlchemy (SQLite)
+- **Vector DB:** ChromaDB (persistent local storage)
+- **Embeddings:** Sentence Transformers (all-MiniLM-L6-v2, 6-layer transformer)
+- **AI:** Ollama — runs fully locally, no API key needed
   > Swap any model by changing `OLLAMA_MODEL` in `backend/.env`
 - **Frontend:** Next.js (React, TypeScript, Tailwind CSS)
-
-## Features
-- 📤 Upload any PDF document
-- 🔍 Semantic search — finds most relevant chunks from document
-- 🧠 AI answers based ONLY on your document content
-- 🔒 Runs 100% locally — your documents never leave your machine
-- ⚡ FastAPI async backend
-- 🎨 Clean dark UI
+- **Auth:** JWT tokens via python-jose + bcrypt password hashing
 
 ## How It Works
 ```
-PDF Upload → Extract Text → Chunk Text → Generate Embeddings → Store in ChromaDB
-                                                                        ↓
-User Question → Generate Embedding → Search ChromaDB → Get Top 3 Chunks
-                                                                        ↓
-                                            Send Context + Question to Ollama → Answer
+PDF Upload → Extract Text → Semantic Chunk (NLTK) → Embeddings → ChromaDB
+                                                                      ↓
+User Question → Embed Question → ChromaDB Similarity Search → Top 4 Chunks
+                                                                      ↓
+                              Prompt + Context → Ollama → Streaming Response
 ```
 
 ## Project Structure
 ```
 docsense/
 ├── backend/
-│   ├── main.py              # FastAPI app
-│   ├── .env                 # Config
-│   ├── requirements.txt
-│   └── chromadb_store/      # Local vector DB (auto created)
+│   ├── main.py              # FastAPI app entry point
+│   ├── routers/
+│   │   ├── auth.py          # Register, login, JWT
+│   │   ├── documents.py     # Upload, list, delete docs
+│   │   └── chat.py          # Ask + streaming ask
+│   ├── models/
+│   │   ├── database.py      # SQLAlchemy models (User, Document)
+│   │   └── schemas.py       # Pydantic schemas
+│   ├── utils/
+│   │   ├── chunking.py      # Semantic chunking with NLTK
+│   │   └── embeddings.py    # ChromaDB operations
+│   └── requirements.txt
 └── frontend/
     └── app/
-        └── page.tsx         # Chat UI
+        └── page.tsx         # Full app UI (auth + chat + document manager)
 ```
 
 ## How to Run
@@ -74,8 +83,10 @@ Open [http://localhost:3000](http://localhost:3000)
 ## API Endpoints
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/` | Health check |
-| POST | `/upload` | Upload PDF document |
-| POST | `/ask` | Ask question about document |
-| GET | `/documents` | List all uploaded documents |
-| DELETE | `/documents/{name}` | Delete a document |
+| POST | `/auth/register` | Create account |
+| POST | `/auth/login` | Login → JWT token |
+| POST | `/documents/upload` | Upload PDF (auth required) |
+| GET | `/documents/` | List user's documents |
+| DELETE | `/documents/{id}` | Delete document |
+| POST | `/chat/ask` | Ask question (full response) |
+| POST | `/chat/ask/stream` | Ask question (streaming) |
